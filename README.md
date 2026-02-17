@@ -51,3 +51,38 @@ RUN chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 ```
+
+```
+#!/bin/bash
+set -e
+
+# 1. Validation
+if [ -z "$1" ]; then
+  echo "Error: No URL provided."
+  exit 1
+fi
+
+URL=$1
+# We can take an optional second argument for the S3 bucket
+S3_BUCKET=$2
+
+# 2. Config Processing
+FLAGS=$(jq -r 'join(" ")' /app/chrome-flags.json)
+
+# 3. Execution
+echo "Running Lighthouse on $URL..."
+lighthouse "$URL" \
+  --config-path=/app/lighthouse-config.js \
+  --chrome-flags="$FLAGS" \
+  --output=html \
+  --output-path=/app/report.html \
+  --quiet
+
+# 4. Future S3 Logic (We'll build this next)
+if [ -n "$S3_BUCKET" ]; then
+  echo "Uploading to $S3_BUCKET..."
+  # aws s3 cp /app/report.html s3://$S3_BUCKET/report.html
+fi
+
+echo "Done."
+```
